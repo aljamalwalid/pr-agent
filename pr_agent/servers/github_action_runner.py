@@ -34,10 +34,9 @@ async def run_action():
     # Get environment variables
     GITHUB_EVENT_NAME = os.environ.get('GITHUB_EVENT_NAME')
     GITHUB_EVENT_PATH = os.environ.get('GITHUB_EVENT_PATH')
-    OPENAI_KEY = os.environ.get('OPENAI_KEY') or os.environ.get('OPENAI.KEY')
-    OPENAI_ORG = os.environ.get('OPENAI_ORG') or os.environ.get('OPENAI.ORG')
+    LLAMA3_API_KEY = os.environ.get('LLAMA3_API_KEY')
+    LLAMA3_API_URL = os.environ.get('LLAMA3_API_URL')
     GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
-    # get_settings().set("CONFIG.PUBLISH_OUTPUT_PROGRESS", False)
 
     # Check if required environment variables are set
     if not GITHUB_EVENT_NAME:
@@ -51,13 +50,12 @@ async def run_action():
         return
 
     # Set the environment variables in the settings
-    if OPENAI_KEY:
-        get_settings().set("OPENAI.KEY", OPENAI_KEY)
+    if LLAMA3_API_KEY:
+        get_settings().set("LLAMA3.API_KEY", LLAMA3_API_KEY)
     else:
-        # Might not be set if the user is using models not from OpenAI
-        print("OPENAI_KEY not set")
-    if OPENAI_ORG:
-        get_settings().set("OPENAI.ORG", OPENAI_ORG)
+        print("LLAMA3_API_KEY not set")
+    if LLAMA3_API_URL:
+        get_settings().set("LLAMA3.API_URL", LLAMA3_API_URL)
     get_settings().set("GITHUB.USER_TOKEN", GITHUB_TOKEN)
     get_settings().set("GITHUB.DEPLOYMENT_TYPE", "user")
     enable_output = get_setting_or_env("GITHUB_ACTION_CONFIG.ENABLE_OUTPUT", True)
@@ -86,7 +84,6 @@ async def run_action():
         if action in ["opened", "reopened", "ready_for_review", "review_requested"]:
             pr_url = event_payload.get("pull_request", {}).get("url")
             if pr_url:
-                # legacy - supporting both GITHUB_ACTION and GITHUB_ACTION_CONFIG
                 auto_review = get_setting_or_env("GITHUB_ACTION.AUTO_REVIEW", None)
                 if auto_review is None:
                     auto_review = get_setting_or_env("GITHUB_ACTION_CONFIG.AUTO_REVIEW", None)
@@ -97,9 +94,8 @@ async def run_action():
                 if auto_improve is None:
                     auto_improve = get_setting_or_env("GITHUB_ACTION_CONFIG.AUTO_IMPROVE", None)
 
-                # invoke by default all three tools
                 if auto_describe is None or is_true(auto_describe):
-                    get_settings().pr_description.final_update_message = False  # No final update message when auto_describe is enabled
+                    get_settings().pr_description.final_update_message = False
                     await PRDescription(pr_url).run()
                 if auto_review is None or is_true(auto_review):
                     await PRReviewer(pr_url).run()
@@ -107,7 +103,6 @@ async def run_action():
                     await PRCodeSuggestions(pr_url).run()
         else:
             get_logger().info(f"Skipping action: {action}")
-
     # Handle issue comment event
     elif GITHUB_EVENT_NAME == "issue_comment" or GITHUB_EVENT_NAME == "pull_request_review_comment":
         action = event_payload.get("action")
@@ -123,11 +118,10 @@ async def run_action():
             if comment_body:
                 is_pr = False
                 disable_eyes = False
-                # check if issue is pull request
                 if event_payload.get("issue", {}).get("pull_request"):
                     url = event_payload.get("issue", {}).get("pull_request", {}).get("url")
                     is_pr = True
-                elif event_payload.get("comment", {}).get("pull_request_url"):  # for 'pull_request_review_comment
+                elif event_payload.get("comment", {}).get("pull_request_url"):
                     url = event_payload.get("comment", {}).get("pull_request_url")
                     is_pr = True
                     disable_eyes = True
