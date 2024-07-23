@@ -103,7 +103,7 @@ async def run_action():
                     await PRCodeSuggestions(pr_url).run()
         else:
             get_logger().info(f"Skipping action: {action}")
-    # Handle issue comment event
+    #  Handle issue comment event
     elif GITHUB_EVENT_NAME == "issue_comment" or GITHUB_EVENT_NAME == "pull_request_review_comment":
         action = event_payload.get("action")
         if action in ["created", "edited"]:
